@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claude Plan Break-Evens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --ink: #1a2230;
+  --muted: #5d6778;
+  --faint: #8a93a3;
+  --line: #d8dde6;
+  --grid: rgba(26, 34, 48, 0.08);
+  --accent: #2f4f6f;
+  --accent-ink: #ffffff;
+  --error: #b42318;
+  --pro: #1f77b4;
+  --max5: #d62728;
+  --max20: #2ca02c;
+  --pro-fill: #c6dbef;
+  --max5-fill: #fcbba1;
+  --max20-fill: #c7e9c0;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e131a;
+    --surface: #151b24;
+    --surface-2: #1a212c;
+    --ink: #e5e9ef;
+    --muted: #9ca6b5;
+    --faint: #6f7a8a;
+    --line: #2a3340;
+    --grid: rgba(229, 233, 239, 0.09);
+    --accent: #8fb3d9;
+    --accent-ink: #0e131a;
+    --error: #f97066;
+    --pro: #5aa9e6;
+    --max5: #f07070;
+    --max20: #5cc45c;
+    --pro-fill: #1e3a55;
+    --max5-fill: #5a2a24;
+    --max20-fill: #1f4a26;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e131a;
+  --surface: #151b24;
+  --surface-2: #1a212c;
+  --ink: #e5e9ef;
+  --muted: #9ca6b5;
+  --faint: #6f7a8a;
+  --line: #2a3340;
+  --grid: rgba(229, 233, 239, 0.09);
+  --accent: #8fb3d9;
+  --accent-ink: #0e131a;
+  --error: #f97066;
+  --pro: #5aa9e6;
+  --max5: #f07070;
+  --max20: #5cc45c;
+  --pro-fill: #1e3a55;
+  --max5-fill: #5a2a24;
+  --max20-fill: #1f4a26;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+}
+* { box-sizing: border-box; }
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+/* Left: charts */
+.charts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.charts header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 14px 18px 0;
+}
+.charts h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.charts header .unit {
+  font-size: 12px;
+  color: var(--muted);
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 12px 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  appearance: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: none;
+  color: var(--muted);
+  font: 500 13px/1 var(--font-sans);
+  padding: 10px 14px;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line);
+  border-bottom: 1px solid var(--surface);
+}
+.tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.caption {
+  margin: 0;
+  padding: 10px 18px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  max-width: 90ch;
+}
+.plot-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 420px;
+  padding: 4px 8px 0;
+}
+#plot { position: absolute; inset: 4px 8px 0; }
+.error {
+  position: absolute;
+  inset: 24px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--error);
+  font-weight: 500;
+}
+.below {
+  flex: 0 0 auto;
+  padding: 8px 18px 16px;
+  overflow-x: auto;
+}
+.below:empty { display: none; }
+table.data {
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+table.data th, table.data td {
+  padding: 4px 12px 4px 0;
+  text-align: right;
+  white-space: nowrap;
+}
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data thead th {
+  color: var(--muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--line);
+}
+table.data td { font-family: var(--font-mono); }
+table.data td:first-child { font-family: var(--font-sans); }
+
+/* Right: parameters */
+.params {
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.params-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.params-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 500 12px/1 var(--font-sans);
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+
+section.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 120ms;
+}
+section.group.inactive { opacity: 0.42; }
+@media (prefers-reduced-motion: reduce) { section.group { transition: none; } }
+.group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}
+.group-head h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.group-head .unused {
+  font-size: 11px;
+  color: var(--faint);
+}
+section.group:not(.inactive) .unused { display: none; }
+.note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: auto repeat(5, minmax(0, 1fr));
+  gap: 6px 8px;
+  align-items: center;
+}
+.plan-grid .colhead {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.swatch {
+  width: 18px;
+  height: 0;
+  border-top: 2.5px solid currentColor;
+}
+.swatch.dash { border-top-style: dashed; }
+.swatch.dot { border-top-style: dotted; border-top-width: 3px; }
+.plan-grid .rowhead {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.plan-grid .colhead.sub {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  justify-content: center;
+}
+.plan-grid .span2 { grid-column: span 2; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+.plan-grid input[type="number"] { padding: 5px 4px; }
+
+input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  font: 13px/1.2 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 6px;
+}
+input[type="number"]:hover { border-color: var(--faint); }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input.bad { border-color: var(--error); }
+
+.field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 10px;
+}
+.field label { font-size: 13px; }
+.field label small {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.slider .top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.slider label { font-size: 13px; }
+.slider output {
+  font: 500 13px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.slider .ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--faint);
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.mix-grid {
+  display: grid;
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  gap: 6px 8px;
+  align-items: center;
+}
+.mix-grid .colhead { font-size: 12px; color: var(--muted); }
+.mix-grid .rowhead { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.derived {
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.derived b { font: 500 13px var(--font-mono); }
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.seg button {
+  appearance: none;
+  border: none;
+  background: var(--surface-2);
+  color: var(--muted);
+  font: 500 12px/1 var(--font-sans);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+@media (max-width: 900px) {
+  html, body { height: auto; }
+  .app {
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    padding-inline: 16px;
+    padding-block: 16px;
+  }
+  .plot-wrap { min-height: 460px; }
+  .params, .charts { overflow: visible; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="charts">
+    <header>
+      <h1>Claude Plan Break-Evens</h1>
+      <span class="unit">Unit: blended token (BT) = 70% cache hits, 20% uncached input, 10% output</span>
+    </header>
+    <div class="tabs" role="tablist" aria-label="Charts">
+      <button class="tab" role="tab" id="tab-densities" data-tab="densities" aria-selected="true">Allowance estimates</button>
+      <button class="tab" role="tab" id="tab-cost" data-tab="cost" aria-selected="false">Cost vs usage</button>
+      <button class="tab" role="tab" id="tab-regime" data-tab="regime" aria-selected="false">Cheapest-plan map</button>
+      <button class="tab" role="tab" id="tab-overpay" data-tab="overpay" aria-selected="false">How much am I overpaying?</button>
+    </div>
+    <p class="caption" id="caption"></p>
+    <div class="plot-wrap" role="tabpanel" aria-labelledby="tab-densities">
+      <div id="plot"></div>
+      <div class="error" id="error" hidden></div>
+    </div>
+    <div class="below" id="below"></div>
+  </main>
+
+  <aside class="params" aria-label="Model parameters">
+    <div class="params-head">
+      <h2>Model parameters</h2>
+      <button class="btn" id="reset" type="button">Reset to defaults</button>
+    </div>
+
+    <section class="group" data-tabs="densities cost regime overpay">
+      <div class="group-head"><h3>Plans</h3><span class="unused">Not used on this tab</span></div>
+      <div class="plan-grid" id="plan-grid"></div>
+      <p class="note">Caps in million BT at full saturation. Each range is a PERT distribution: min = low, max = high, mode = √(low·high).</p>
+    </section>
+
+    <section class="group" data-tabs="densities cost regime overpay">
+      <div class="group-head"><h3>PERT shape</h3><span class="unused">Not used on this tab</span></div>
+      <div class="field">
+        <label for="lambda">λ (peakedness)<small>4 is the standard PERT value</small></label>
+        <input type="number" id="lambda" step="0.5" min="0.5">
+      </div>
+    </section>
+
+    <section class="group" data-tabs="densities cost regime overpay">
+      <div class="group-head"><h3>Overage price</h3><span class="unused">Not used on this tab</span></div>
+      <div class="mix-grid">
+        <span></span>
+        <span class="colhead">Cache read</span>
+        <span class="colhead">Uncached in</span>
+        <span class="colhead">Output</span>
+        <span class="rowhead">API $/M</span>
+        <input type="number" id="rCache" step="0.05" min="0" aria-label="Cache read price, USD per million">
+        <input type="number" id="rIn" step="0.5" min="0" aria-label="Uncached input price, USD per million">
+        <input type="number" id="rOut" step="1" min="0" aria-label="Output price, USD per million">
+        <span class="rowhead">Mix %</span>
+        <input type="number" id="mCache" step="5" min="0" aria-label="Cache read share, percent">
+        <input type="number" id="mIn" step="5" min="0" aria-label="Uncached input share, percent">
+        <input type="number" id="mOut" step="5" min="0" aria-label="Output share, percent">
+      </div>
+      <div class="derived"><span>Overage (API blended price)</span><b id="apiPrice">—</b></div>
+    </section>
+
+    <section class="group" id="g-n" data-tabs="cost regime overpay">
+      <div class="group-head"><h3>Usage pattern</h3><span class="unused">Not used on this tab</span></div>
+      <div class="slider">
+        <div class="top"><label for="n">5-hour windows used per week</label><output id="n-out" for="n"></output></div>
+        <input type="range" id="n" min="5" max="33.6" step="0.1">
+        <div class="ends"><span>5 · piled (one window × 5 days)</span><span>33.6 · even (24/7)</span></div>
+      </div>
+      <p class="note">Usage is spread evenly over the windows used. Weekly coverage = min(windows × session cap, weekly cap).</p>
+    </section>
+
+    <section class="group" id="g-q" data-tabs="cost regime overpay">
+      <div class="group-head"><h3>Allowance scenario</h3><span class="unused">Not used on this tab</span></div>
+      <div class="slider">
+        <div class="top"><label for="q">Allowance quantile q</label><output id="q-out" for="q"></output></div>
+        <input type="range" id="q" min="1" max="99" step="1">
+        <div class="ends"><span>stingy</span><span>median = 50%</span><span>generous</span></div>
+      </div>
+      <div class="field" id="f-qlo">
+        <label for="qLo">Stingy scenario q (%)<small>Light curves on Cost vs usage</small></label>
+        <input type="number" id="qLo" min="1" max="99" step="1">
+      </div>
+      <div class="field" id="f-qhi">
+        <label for="qHi">Generous scenario q (%)<small>Light curves on Cost vs usage</small></label>
+        <input type="number" id="qHi" min="1" max="99" step="1">
+      </div>
+      <p class="note">One q applies to every plan and every cap, so allowances move together.</p>
+    </section>
+
+    <section class="group" id="g-regime" data-tabs="regime">
+      <div class="group-head"><h3>Map y-axis</h3><span class="unused">Not used on this tab</span></div>
+      <div class="seg" role="group" aria-label="Map y-axis">
+        <button type="button" id="ry-q" data-ry="q">Allowance quantile q</button>
+        <button type="button" id="ry-n" data-ry="n">Windows per week</button>
+      </div>
+    </section>
+
+    <section class="group" data-tabs="cost regime overpay">
+      <div class="group-head"><h3>Display</h3><span class="unused">Not used on this tab</span></div>
+      <div class="field">
+        <label for="xMax">X-axis max<small>Billion BT per month</small></label>
+        <input type="number" id="xMax" min="0.05" step="0.05">
+      </div>
+    </section>
+
+    <section class="group" data-tabs="densities cost regime overpay">
+      <div class="group-head"><h3>Allowances at current settings</h3><span class="unused">Not used on this tab</span></div>
+      <div style="overflow-x:auto"><table class="data" id="readout"></table></div>
+      <p class="note" id="readout-note">Monthly = weekly coverage × 30.44 / 7.</p>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jstat@1.9.6/dist/jstat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const WPM = 30.44 / 7;
+  const PLAN_KEYS = ["pro", "max5", "max20"];
+  const DASH = ["solid", "dash", "dot"];
+  const SWATCH = ["", "dash", "dot"];
+  const DEFAULTS = {
+    plans: [
+      { name: "Pro", price: 20, sLo: 0.6, sHi: 10, wLo: 5, wHi: 50 },
+      { name: "Max-5", price: 100, sLo: 3, sHi: 50, wLo: 15, wHi: 150 },
+      { name: "Max-20", price: 200, sLo: 10, sHi: 210, wLo: 25, wHi: 250 }
+    ],
+    lambda: 4,
+    rCache: 0.2, rIn: 4, rOut: 20,
+    mCache: 70, mIn: 20, mOut: 10,
+    n: 33.6, q: 50, qLo: 10, qHi: 90,
+    xMax: 0.75,
+    regimeY: "q"
+  };
+  const STORE_KEY = "claude-plan-breakevens-v1";
+
+  let state = loadState();
+  let tab = "densities";
+
+  /* ---------- state ---------- */
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && Array.isArray(s.plans) && s.plans.length === 3) return Object.assign(clone(DEFAULTS), s);
+      }
+    } catch (e) { /* storage unavailable */ }
+    return clone(DEFAULTS);
+  }
+  function saveState() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- math ---------- */
+  function pert(lo, hi, lam) {
+    const mode = Math.sqrt(lo * hi);
+    const s = hi - lo;
+    return { lo, hi, mode, a: 1 + lam * (mode - lo) / s, b: 1 + lam * (hi - mode) / s };
+  }
+  function pq(d, p) { return d.lo + (d.hi - d.lo) * jStat.beta.inv(p, d.a, d.b); }
+  function relDensity(d, x) {
+    const t = (x - d.lo) / (d.hi - d.lo);
+    if (t <= 0 || t >= 1) return 0;
+    const tm = (d.mode - d.lo) / (d.hi - d.lo);
+    return jStat.beta.pdf(t, d.a, d.b) / jStat.beta.pdf(tm, d.a, d.b);
+  }
+  function overageRate() {
+    const tot = state.mCache + state.mIn + state.mOut;
+    return (state.mCache * state.rCache + state.mIn * state.rIn + state.mOut * state.rOut) / tot;
+  }
+  // Monthly included allowance in million BT, at quantile q (0-1) and n windows/week.
+  function allowance(i, q, n) {
+    const p = state.plans[i];
+    const S = pq(pert(p.sLo, p.sHi, state.lambda), q);
+    const W = pq(pert(p.wLo, p.wHi, state.lambda), q);
+    return { S, W, weekly: Math.min(n * S, W), monthly: Math.min(n * S, W) * WPM };
+  }
+  function cost(i, u, A, r) { return state.plans[i].price + r * Math.max(0, u - A); }
+
+  // First usage where plan i's cost rises above plan j's (piecewise-linear exact).
+  function crossing(i, j, Ai, Aj, r) {
+    const g = u => cost(i, u, Ai, r) - cost(j, u, Aj, r);
+    const pts = [0, Ai, Aj, 1e9].filter((v, k, a) => a.indexOf(v) === k).sort((x, y) => x - y);
+    for (let k = 0; k < pts.length - 1; k++) {
+      const u0 = pts[k], u1 = pts[k + 1], g0 = g(u0), g1 = g(u1);
+      if (g0 < 0 && g1 >= 0) return u0 + (0 - g0) * (u1 - u0) / (g1 - g0);
+    }
+    return null;
+  }
+  function cheapestAt(u, A, r) {
+    let best = 0, bc = Infinity;
+    for (let i = 0; i < 3; i++) { const c = cost(i, u, A[i], r); if (c < bc - 1e-9) { bc = c; best = i; } }
+    return best;
+  }
+  // Points along [0, uMax] where the cheapest plan changes: [{u, from, to}]
+  function transitions(A, r, uMax, steps) {
+    const out = [];
+    let prev = cheapestAt(0, A, r);
+    let uPrev = 0;
+    for (let k = 1; k <= steps; k++) {
+      const u = uMax * k / steps;
+      const c = cheapestAt(u, A, r);
+      if (c !== prev) {
+        let lo = uPrev, hi = u;
+        for (let it = 0; it < 50; it++) {
+          const mid = (lo + hi) / 2;
+          if (cheapestAt(mid, A, r) === prev) lo = mid; else hi = mid;
+        }
+        out.push({ u: (lo + hi) / 2, from: prev, to: c });
+        prev = c;
+      }
+      uPrev = u;
+    }
+    return out;
+  }
+
+  /* ---------- validation ---------- */
+  function validate() {
+    const errs = [];
+    document.querySelectorAll("input.bad").forEach(el => el.classList.remove("bad"));
+    const bad = (id, msg) => { const el = document.getElementById(id); if (el) el.classList.add("bad"); errs.push(msg); };
+    state.plans.forEach((p, i) => {
+      if (!(p.price > 0)) bad(`p${i}-price`, `${p.name}: price must be above 0.`);
+      if (!(p.sLo > 0 && p.sHi > p.sLo)) { bad(`p${i}-sLo`, `${p.name}: session low must be above 0 and below high.`); bad(`p${i}-sHi`, ""); }
+      if (!(p.wLo > 0 && p.wHi > p.wLo)) { bad(`p${i}-wLo`, `${p.name}: weekly low must be above 0 and below high.`); bad(`p${i}-wHi`, ""); }
+    });
+    if (!(state.lambda > 0)) bad("lambda", "λ must be above 0.");
+    ["rCache", "rIn", "rOut", "mCache", "mIn", "mOut"].forEach(k => { if (!(state[k] >= 0)) bad(k, "Prices and mix shares can't be negative."); });
+    if (!(state.mCache + state.mIn + state.mOut > 0)) bad("mCache", "Mix shares must add up to more than 0.");
+    if (!(state.qLo >= 1 && state.qLo <= 99)) bad("qLo", "Scenario quantiles must be between 1 and 99.");
+    if (!(state.qHi >= 1 && state.qHi <= 99)) bad("qHi", "Scenario quantiles must be between 1 and 99.");
+    if (!(state.xMax > 0)) bad("xMax", "X-axis max must be above 0.");
+    return errs.filter(Boolean);
+  }
+
+  /* ---------- theme ---------- */
+  function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function theme() {
+    return {
+      ink: tok("--ink"), muted: tok("--muted"), faint: tok("--faint"), grid: tok("--grid"),
+      line: tok("--line"), surface: tok("--surface"),
+      plan: PLAN_KEYS.map(k => tok("--" + k)),
+      fill: PLAN_KEYS.map(k => tok("--" + k + "-fill")),
+      sans: tok("--font-sans"), mono: tok("--font-mono")
+    };
+  }
+  function baseLayout(t) {
+    return {
+      paper_bgcolor: t.surface,
+      plot_bgcolor: t.surface,
+      font: { family: t.sans, color: t.ink, size: 12 },
+      margin: { l: 64, r: 24, t: 40, b: 56 },
+      hoverlabel: { font: { family: t.mono, size: 12 } },
+      legend: { orientation: "h", x: 0, y: 1.02, xanchor: "left", yanchor: "bottom", font: { size: 12 } }
+    };
+  }
+  function axis(t, title, extra) {
+    return Object.assign({
+      title: { text: title, font: { size: 12, color: t.muted } },
+      gridcolor: t.grid, zerolinecolor: t.grid, linecolor: t.line,
+      tickfont: { color: t.muted, family: t.mono, size: 11 }, showline: true, mirror: false
+    }, extra || {});
+  }
+  const fmtB = v => (v / 1000).toFixed(3) + " B";
+  const fmtUSD = v => "$" + Math.round(v).toLocaleString("en-US");
+  const planLabel = p => `${p.name} ($${p.price})`;
+
+  /* ---------- charts ---------- */
+  function renderDensities(t) {
+    const r = overageRate();
+    const rows = [
+      { title: "Per 5-hour session", x: "Million blended tokens per 5-hour session", rng: p => [p.sLo, p.sHi] },
+      { title: "Per week", x: "Million blended tokens per week", rng: p => [p.wLo, p.wHi] },
+      { title: "Per hour, steady 24/7", x: "Million blended tokens per hour", rng: p => [p.wLo / 168, p.wHi / 168] },
+      { title: "Effective blended price at saturation", x: "USD per million blended tokens",
+        rng: p => [p.price / (p.wHi * WPM), p.price / (p.wLo * WPM)] }
+    ];
+    const traces = [], layout = baseLayout(t), ann = [], shapes = [];
+    layout.grid = { rows: 2, columns: 2, pattern: "independent", xgap: 0.12, ygap: 0.28 };
+    layout.margin = { l: 64, r: 24, t: 56, b: 56 };
+    layout.hovermode = "closest";
+    rows.forEach((row, k) => {
+      const ax = k === 0 ? "" : String(k + 1);
+      let xmin = Infinity, xmax = -Infinity;
+      state.plans.forEach((p, i) => {
+        const [lo, hi] = row.rng(p);
+        const d = pert(lo, hi, state.lambda);
+        const xs = [], ys = [];
+        const N = 1200;
+        for (let m = 0; m <= N; m++) {
+          const x = lo + (hi - lo) * m / N;
+          const y = relDensity(d, x);
+          xs.push(x); ys.push(y);
+          if (y >= 0.4) { xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); }
+        }
+        traces.push({
+          x: xs, y: ys, type: "scatter", mode: "lines", xaxis: "x" + ax, yaxis: "y" + ax,
+          name: planLabel(p), legendgroup: "p" + i, showlegend: k === 0,
+          line: { color: t.plan[i], dash: DASH[i], width: 2.2 },
+          hovertemplate: `${p.name}<br>x = %{x:.3~g}<br>relative = %{y:.2f}<extra></extra>`
+        });
+      });
+      const pad = 0.04 * (xmax - xmin);
+      const x0 = xmin - pad, x1 = xmax + pad;
+      layout["xaxis" + ax] = axis(t, row.x, { range: [x0, x1] });
+      layout["yaxis" + ax] = axis(t, "Relative likelihood (peak = 1)", { range: [0.4, 1.02] });
+      ann.push({ text: `<b>${row.title}</b>`, xref: `x${ax} domain`, yref: `y${ax} domain`, x: 0.5, y: 1.04,
+        xanchor: "center", yanchor: "bottom", showarrow: false, font: { size: 13, color: t.ink } });
+      if (k === 3) {
+        if (r > x1) {
+          ann.push({ text: `API blended price $${r.toFixed(2)} →`, xref: `x${ax} domain`, yref: `y${ax} domain`,
+            x: 0.98, y: 0.97, xanchor: "right", yanchor: "top", showarrow: false, font: { size: 11, color: t.ink } });
+        } else {
+          shapes.push({ type: "line", xref: "x" + ax, yref: `y${ax} domain`, x0: r, x1: r, y0: 0, y1: 1,
+            line: { color: t.muted, width: 1, dash: "dot" } });
+          ann.push({ text: `API $${r.toFixed(2)}`, xref: "x" + ax, yref: `y${ax} domain`, x: r, y: 0.97,
+            xanchor: "left", yanchor: "top", showarrow: false, font: { size: 11, color: t.muted } });
+        }
+      }
+    });
+    layout.legend.y = 1.1;
+    layout.annotations = ann;
+    layout.shapes = shapes;
+    return { traces, layout, below: "" };
+  }
+
+  function renderCost(t) {
+    const r = overageRate();
+    const uMax = state.xMax * 1000;
+    const scen = [
+      { q: state.qLo / 100, main: false, sym: "triangle-down", label: `Stingy (q = ${state.qLo}%)` },
+      { q: state.q / 100, main: true, sym: "circle", label: `Central (q = ${state.q}%)` },
+      { q: state.qHi / 100, main: false, sym: "triangle-up", label: `Generous (q = ${state.qHi}%)` }
+    ];
+    const traces = [];
+    const pairs = [[0, 1], [0, 2], [1, 2]];
+    const tableRows = pairs.map(([i, j]) => ({ label: `${state.plans[i].name} = ${state.plans[j].name}`, vals: [] }));
+    const N = 600;
+    const us = []; for (let m = 0; m <= N; m++) us.push(uMax * m / N);
+    const order = [0, 2, 1]; // draw light scenarios first
+    order.forEach(si => {
+      const s = scen[si];
+      const A = [0, 1, 2].map(i => allowance(i, s.q, state.n).monthly);
+      state.plans.forEach((p, i) => {
+        // include the kink exactly
+        const xs = us.slice(); if (A[i] < uMax) xs.push(A[i]); xs.sort((a, b) => a - b);
+        traces.push({
+          x: xs.map(u => u / 1000), y: xs.map(u => cost(i, u, A[i], r)), type: "scatter", mode: "lines",
+          name: s.main ? planLabel(p) : `${p.name} · ${s.label}`, showlegend: s.main, legendgroup: "p" + i,
+          line: { color: t.plan[i], dash: DASH[i], width: s.main ? 2.6 : 1.8 }, opacity: s.main ? 1 : 0.42,
+          hovertemplate: `${p.name} · ${s.label}<br>%{x:.3f} B → %{y:$,.0f}<extra></extra>`
+        });
+      });
+      const bx = [], by = [], bt = [];
+      pairs.forEach(([i, j], pk) => {
+        const u = crossing(i, j, A[i], A[j], r);
+        const onFlat = u !== null && u <= A[j] + 1e-9;
+        tableRows[pk].vals[si] = u === null ? null : { u, onFlat };
+        if (u !== null && u <= uMax) {
+          bx.push(u / 1000); by.push(cost(j, u, A[j], r));
+          bt.push(`${state.plans[i].name} = ${state.plans[j].name}<br>${s.label}<br>${fmtB(u)} at ${fmtUSD(cost(j, u, A[j], r))}/mo`);
+        }
+      });
+      traces.push({
+        x: bx, y: by, type: "scatter", mode: "markers", showlegend: false, hovertext: bt, hoverinfo: "text",
+        marker: { symbol: s.sym, size: s.main ? 9 : 8, color: s.main ? t.ink : t.surface, line: { color: t.ink, width: 1.5 } }
+      });
+    });
+    // legend entries for scenario markers
+    scen.forEach(s => traces.push({
+      x: [null], y: [null], type: "scatter", mode: "markers+lines", name: s.label,
+      line: { color: t.muted, width: s.main ? 2.6 : 1.8 }, opacity: s.main ? 1 : 0.6,
+      marker: { symbol: s.sym, size: 8, color: s.main ? t.ink : t.surface, line: { color: t.ink, width: 1.5 } }
+    }));
+    const layout = baseLayout(t);
+    layout.hovermode = "closest";
+    const yMax = 2.5 * Math.max(...state.plans.map(p => p.price));
+    layout.xaxis = axis(t, "Billion blended tokens per month", { range: [0, state.xMax] });
+    layout.yaxis = axis(t, "Monthly cost (USD)", { range: [0, yMax], tickprefix: "$" });
+    layout.margin.t = 64;
+
+    const head = `<thead><tr><th>Break-even (billion BT / month)</th>${[0, 1, 2].map(si => `<th>${scen[si].label}</th>`).join("")}</tr></thead>`;
+    const body = tableRows.map(row => `<tr><td>${row.label}</td>${[0, 1, 2].map(si => {
+      const v = row.vals[si];
+      if (!v) return "<td>none</td>";
+      return `<td>${(v.u / 1000).toFixed(3)}</td>`;
+    }).join("")}</tr>`).join("");
+    return { traces, layout, below: `<table class="data">${head}<tbody>${body}</tbody></table>` };
+  }
+
+  function renderRegime(t) {
+    const r = overageRate();
+    const uMax = state.xMax * 1000;
+    const byQ = state.regimeY === "q";
+    const NX = 360, NY = 160;
+    const xs = [], ys = [];
+    for (let m = 0; m <= NX; m++) xs.push(uMax * m / NX);
+    for (let k = 0; k <= NY; k++) ys.push(byQ ? 0.005 + 0.99 * k / NY : 5 + (33.6 - 5) * k / NY);
+    const z = [], cd = [];
+    const bnd = {}; // key "a-b" -> {x:[], y:[]}
+    ys.forEach((yv, k) => {
+      const q = byQ ? yv : state.q / 100;
+      const n = byQ ? state.n : yv;
+      const A = [0, 1, 2].map(i => allowance(i, q, n).monthly);
+      const zr = [], cr = [];
+      xs.forEach(u => {
+        const c = [0, 1, 2].map(i => cost(i, u, A[i], r));
+        let b = 0; for (let i = 1; i < 3; i++) if (c[i] < c[b] - 1e-9) b = i;
+        zr.push(b);
+        cr.push(`${state.plans[b].name} cheapest<br>Pro ${fmtUSD(c[0])} · Max-5 ${fmtUSD(c[1])} · Max-20 ${fmtUSD(c[2])}`);
+      });
+      z.push(zr); cd.push(cr);
+      const tr = transitions(A, r, uMax, 800);
+      const seen = new Set();
+      tr.forEach(tt => {
+        const key = tt.from + "-" + tt.to;
+        seen.add(key);
+        if (!bnd[key]) bnd[key] = { x: [], y: [], from: tt.from, to: tt.to };
+        bnd[key].x.push(tt.u / 1000); bnd[key].y.push(byQ ? yv * 100 : yv);
+      });
+      Object.keys(bnd).forEach(key => { if (!seen.has(key)) { bnd[key].x.push(null); bnd[key].y.push(null); } });
+    });
+    const yDisp = ys.map(v => byQ ? v * 100 : v);
+    const cs = [[0, t.fill[0]], [1 / 3, t.fill[0]], [1 / 3, t.fill[1]], [2 / 3, t.fill[1]], [2 / 3, t.fill[2]], [1, t.fill[2]]];
+    const traces = [{
+      type: "heatmap", x: xs.map(u => u / 1000), y: yDisp, z, zmin: -0.5, zmax: 2.5, colorscale: cs, showscale: false,
+      customdata: cd,
+      hovertemplate: `%{x:.3f} B/mo · ${byQ ? "q = %{y:.0f}%" : "%{y:.1f} windows/wk"}<br>%{customdata}<extra></extra>`
+    }];
+    Object.values(bnd).forEach(b => traces.push({
+      x: b.x, y: b.y, type: "scatter", mode: "lines", showlegend: false, connectgaps: false,
+      line: { color: t.ink, width: 2 }, hoverinfo: "skip"
+    }));
+    // legend swatches
+    state.plans.forEach((p, i) => traces.push({
+      x: [null], y: [null], type: "scatter", mode: "markers", name: planLabel(p),
+      marker: { symbol: "square", size: 14, color: t.fill[i], line: { color: t.plan[i], width: 1.5 } }
+    }));
+    // region labels at the centroid of each region
+    const ann = [];
+    for (let i = 0; i < 3; i++) {
+      let sx = 0, sy = 0, cnt = 0;
+      z.forEach((zr, k) => zr.forEach((v, m) => { if (v === i) { sx += xs[m]; sy += yDisp[k]; cnt++; } }));
+      if (cnt > 40) ann.push({ x: sx / cnt / 1000, y: sy / cnt, text: `<b>${state.plans[i].name} cheapest</b>`,
+        showarrow: false, font: { size: 13, color: t.ink } });
+    }
+    const layout = baseLayout(t);
+    layout.hovermode = "closest";
+    layout.annotations = ann;
+    layout.margin.t = 56;
+    layout.margin.l = byQ ? 72 : 100;
+    layout.xaxis = axis(t, "Billion blended tokens per month", { range: [0, state.xMax], showgrid: false });
+    layout.yaxis = byQ
+      ? axis(t, "Allowance quantile q (%) · low = stingy, high = generous", { range: [0.5, 99.5], showgrid: false, ticksuffix: "%" })
+      : axis(t, "5-hour windows used per week", { range: [5, 33.6], showgrid: false,
+          tickvals: [5, 10, 15, 20, 25, 30, 33.6], ticktext: ["5 (piled)", "10", "15", "20", "25", "30", "33.6 (even)"] });
+    return { traces, layout, below: "" };
+  }
+
+  function renderOverpay(t) {
+    const r = overageRate();
+    const uMax = state.xMax * 1000;
+    const q = state.q / 100;
+    const A = [0, 1, 2].map(i => allowance(i, q, state.n).monthly);
+    const N = 900;
+    const set = new Set();
+    for (let m = 0; m <= N; m++) set.add(uMax * m / N);
+    A.forEach(a => { if (a < uMax) set.add(a); });
+    const tr = transitions(A, r, uMax, 1500);
+    tr.forEach(tt => set.add(tt.u));
+    const us = Array.from(set).sort((a, b) => a - b);
+    const minC = us.map(u => Math.min(...[0, 1, 2].map(i => cost(i, u, A[i], r))));
+    const traces = state.plans.map((p, i) => ({
+      x: us.map(u => u / 1000), y: us.map((u, k) => cost(i, u, A[i], r) - minC[k]), type: "scatter", mode: "lines",
+      name: planLabel(p), line: { color: t.plan[i], dash: DASH[i], width: 2.4 },
+      hovertemplate: `${p.name}: %{y:$,.0f}/mo more than cheapest<extra></extra>`
+    }));
+    let yTop = 0;
+    traces.forEach(tr_ => tr_.y.forEach(v => { yTop = Math.max(yTop, v); }));
+    yTop = Math.max(yTop * 1.08, 10);
+    const shapes = [], ann = [];
+    tr.forEach((tt, k) => {
+      shapes.push({ type: "line", xref: "x", yref: "paper", x0: tt.u / 1000, x1: tt.u / 1000, y0: 0, y1: 1,
+        line: { color: t.faint, width: 1, dash: "dot" } });
+      ann.push({ x: tt.u / 1000, y: k % 2 ? 0.9 : 1, xref: "x", yref: "paper", xanchor: "left", yanchor: "top", showarrow: false,
+        text: ` ${state.plans[tt.from].name} = ${state.plans[tt.to].name}<br> ${fmtB(tt.u)}`, align: "left",
+        font: { size: 11, color: t.muted } });
+    });
+    const layout = baseLayout(t);
+    layout.hovermode = "x unified";
+    layout.shapes = shapes;
+    layout.annotations = ann;
+    layout.margin.t = 64;
+    layout.xaxis = axis(t, "Billion blended tokens per month", { range: [0, state.xMax] });
+    layout.yaxis = axis(t, "Extra monthly cost vs cheapest plan (USD)", { range: [-0.03 * yTop, yTop], tickprefix: "$" });
+
+    const checkpoints = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1, 1.5, 2].filter(v => v <= state.xMax + 1e-9);
+    const head = `<thead><tr><th>Usage (B / month)</th>${state.plans.map(p => `<th>${p.name}</th>`).join("")}<th>Cheapest</th></tr></thead>`;
+    const body = checkpoints.map(b => {
+      const u = b * 1000;
+      const c = [0, 1, 2].map(i => cost(i, u, A[i], r));
+      const m = Math.min(...c);
+      const w = c.indexOf(m);
+      return `<tr><td>${b.toFixed(2)}</td>${c.map(v => `<td>${v - m < 0.5 ? "—" : "+" + fmtUSD(v - m)}</td>`).join("")}<td>${state.plans[w].name} ${fmtUSD(m)}</td></tr>`;
+    }).join("");
+    return { traces, layout, below: `<table class="data">${head}<tbody>${body}</tbody></table>` };
+  }
+
+  const CAPTIONS = {
+    densities: () => `PERT densities of full-saturation allowances, each scaled so its peak = 1; only the part ≥ 0.4 is shown. Per-hour and price rows are derived from the weekly range (weekly ÷ 168; price ÷ monthly tokens).`,
+    cost: () => `Monthly cost against monthly usage. Each plan is flat up to its included allowance, then rises at the overage price. Heavy lines use q = ${state.q}%; light lines use q = ${state.qLo}% (kink further left) and q = ${state.qHi}% (kink further right). ${state.n.toFixed(1)} windows/week.`,
+    regime: () => state.regimeY === "q"
+      ? `Which plan costs least at each usage level (x) and allowance quantile (y), with the same q for every plan. Black lines are break-evens. ${state.n.toFixed(1)} windows/week.`
+      : `Which plan costs least at each usage level (x) and usage pattern (y), at allowance quantile q = ${state.q}%. Black lines are break-evens.`,
+    overpay: () => `How much more each plan costs than the cheapest plan at the same usage. A line at $0 means that plan is the cheapest there. q = ${state.q}%, ${state.n.toFixed(1)} windows/week.`
+  };
+
+  /* ---------- render ---------- */
+  let timer = null;
+  function scheduleRender() { clearTimeout(timer); timer = setTimeout(render, 40); }
+  function render() {
+    updateDerived();
+    updateInactive();
+    const errBox = document.getElementById("error");
+    const plotEl = document.getElementById("plot");
+    const below = document.getElementById("below");
+    document.getElementById("caption").textContent = CAPTIONS[tab]();
+    const errs = validate();
+    if (errs.length) {
+      errBox.textContent = errs[0];
+      errBox.hidden = false;
+      plotEl.style.visibility = "hidden";
+      below.innerHTML = "";
+      return;
+    }
+    errBox.hidden = true;
+    plotEl.style.visibility = "visible";
+    const t = theme();
+    const fn = { densities: renderDensities, cost: renderCost, regime: renderRegime, overpay: renderOverpay }[tab];
+    const out = fn(t);
+    below.innerHTML = out.below;
+    Plotly.react(plotEl, out.traces, out.layout, { responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d"] });
+    Plotly.Plots.resize(plotEl);
+    renderReadout();
+    saveState();
+  }
+
+  function updateDerived() {
+    const ok = state.mCache + state.mIn + state.mOut > 0;
+    document.getElementById("apiPrice").textContent = ok ? `$${overageRate().toFixed(2)} / M BT` : "—";
+    document.getElementById("n-out").textContent = state.n.toFixed(1);
+    document.getElementById("q-out").textContent = state.q + "%";
+  }
+  function renderReadout() {
+    const q = state.q / 100;
+    const rows = state.plans.map((p, i) => {
+      const a = allowance(i, q, state.n);
+      return `<tr><td>${p.name}</td><td>${a.S.toFixed(1)}</td><td>${a.W.toFixed(1)}</td><td>${(a.monthly / 1000).toFixed(3)}</td></tr>`;
+    }).join("");
+    document.getElementById("readout-note").textContent =
+      `At q = ${state.q}% and ${state.n.toFixed(1)} windows/week. Monthly = weekly coverage × 30.44 / 7.`;
+    document.getElementById("readout").innerHTML =
+      `<thead><tr><th>Plan</th><th>Session (M)</th><th>Weekly (M)</th><th>Monthly (B)</th></tr></thead><tbody>${rows}</tbody>`;
+  }
+  function updateInactive() {
+    document.querySelectorAll("section.group").forEach(g => {
+      let active = g.dataset.tabs.split(" ").includes(tab);
+      if (tab === "regime" && g.id === "g-n") active = state.regimeY === "q";
+      if (tab === "regime" && g.id === "g-q") active = state.regimeY === "n";
+      g.classList.toggle("inactive", !active);
+    });
+    const scenOn = tab === "cost";
+    ["f-qlo", "f-qhi"].forEach(id => { document.getElementById(id).style.opacity = scenOn || tab === "densities" ? "" : "0.5"; });
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ry === state.regimeY)));
+  }
+
+  /* ---------- UI wiring ---------- */
+  function buildPlanGrid() {
+    const g = document.getElementById("plan-grid");
+    let html = `<span></span><span class="colhead sub">Price</span><span class="colhead sub span2">Session (M BT)</span><span class="colhead sub span2">Weekly (M BT)</span>`;
+    html += `<span></span><span class="colhead sub">$/mo</span><span class="colhead sub">low</span><span class="colhead sub">high</span><span class="colhead sub">low</span><span class="colhead sub">high</span>`;
+    state.plans.forEach((p, i) => {
+      html += `<span class="colhead" style="color:var(--${PLAN_KEYS[i]})"><span class="swatch ${SWATCH[i]}"></span><span style="color:var(--ink)">${p.name}</span></span>`;
+      html += `<input type="number" id="p${i}-price" data-plan="${i}" data-key="price" step="10" min="1" aria-label="${p.name} price, USD per month">`;
+      [["sLo", "session low"], ["sHi", "session high"], ["wLo", "weekly low"], ["wHi", "weekly high"]].forEach(([k, lab]) => {
+        html += `<input type="number" id="p${i}-${k}" data-plan="${i}" data-key="${k}" step="any" min="0" aria-label="${p.name} ${lab}, million BT">`;
+      });
+    });
+    g.innerHTML = html;
+  }
+  function syncInputs() {
+    state.plans.forEach((p, i) => ["price", "sLo", "sHi", "wLo", "wHi"].forEach(k => {
+      document.getElementById(`p${i}-${k}`).value = p[k];
+    }));
+    ["lambda", "rCache", "rIn", "rOut", "mCache", "mIn", "mOut", "qLo", "qHi", "xMax", "n", "q"].forEach(k => {
+      document.getElementById(k).value = state[k];
+    });
+  }
+  function wire() {
+    document.getElementById("plan-grid").addEventListener("input", e => {
+      const el = e.target; if (!el.dataset.key) return;
+      state.plans[+el.dataset.plan][el.dataset.key] = parseFloat(el.value);
+      scheduleRender();
+    });
+    ["lambda", "rCache", "rIn", "rOut", "mCache", "mIn", "mOut", "qLo", "qHi", "xMax", "n", "q"].forEach(k => {
+      document.getElementById(k).addEventListener("input", e => {
+        state[k] = parseFloat(e.target.value);
+        scheduleRender();
+      });
+    });
+    document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+      state.regimeY = b.dataset.ry; render();
+    }));
+    document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => selectTab(b.dataset.tab, true)));
+    document.querySelector(".tabs").addEventListener("keydown", e => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const tabs = Array.from(document.querySelectorAll(".tab"));
+      const k = tabs.findIndex(x => x.dataset.tab === tab);
+      const nk = (k + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+      tabs[nk].focus(); selectTab(tabs[nk].dataset.tab, true);
+    });
+    document.getElementById("reset").addEventListener("click", () => {
+      const keepY = state.regimeY;
+      state = clone(DEFAULTS); state.regimeY = keepY;
+      syncInputs(); render();
+    });
+    // re-render when theme changes
+    try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render); } catch (e) {}
+    new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
+  function selectTab(id, updateHash) {
+    tab = id;
+    document.querySelectorAll(".tab").forEach(b => {
+      const on = b.dataset.tab === id;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    document.querySelector(".plot-wrap").setAttribute("aria-labelledby", "tab-" + id);
+    if (updateHash) { try { history.replaceState(null, "", "#" + id); } catch (e) {} }
+    render();
+  }
+
+  buildPlanGrid();
+  syncInputs();
+  wire();
+  const h = (location.hash || "").replace("#", "");
+  selectTab(["densities", "cost", "regime", "overpay"].includes(h) ? h : "densities", false);
+})();
+</script>
+</body>
+</html>
